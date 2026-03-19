@@ -1,7 +1,10 @@
+# OS
 .DS_Store
 Thumbs.db
-Desktop.ini
-*.log
-node_modules/
-.env
-.env.*
+
+# Temp/debug files
+test-decode.jpg
+test-decode2.jpg
+new-test.jpg
+test.html
+correct-b64.txt

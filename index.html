@@ -1,352 +1,430 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Spin the Wheel — Kopius</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg:      #08000a;
-    --surface: #120010;
-    --surface2:#1c0018;
-    --border:  #420032;
-    --hot:     #f03f6e;
-    --deep:    #9c0080;
-    --mid:     #c8206d;
-    --text:    #ffd6ee;
-    --muted:   #a06888;
-    --accent:  #ff6090;
-  }
-  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:2rem 1rem 4rem; }
-  h1 { font-family:'Playfair Display',serif; font-size:clamp(2rem,5vw,3.5rem); font-weight:900; letter-spacing:0.04em; background:linear-gradient(90deg,var(--hot),var(--deep)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-align:center; margin-bottom:0.25rem; }
-  .subtitle { font-size:0.85rem; color:var(--muted); letter-spacing:0.15em; text-transform:uppercase; text-align:center; margin-bottom:2.5rem; }
-  .main-layout { display:flex; gap:2.5rem; align-items:flex-start; justify-content:center; flex-wrap:wrap; width:100%; max-width:1100px; }
-  .wheel-section { display:flex; flex-direction:column; align-items:center; gap:1.5rem; flex:0 0 auto; }
-  .wheel-wrapper { position:relative; width:380px; height:380px; }
-  .wheel-pointer { position:absolute; top:-22px; left:50%; transform:translateX(-50%); z-index:10; width:0; height:0; border-left:14px solid transparent; border-right:14px solid transparent; border-top:36px solid var(--hot); filter:drop-shadow(0 2px 12px rgba(240,63,110,0.8)); }
-  #wheelCanvas { width:380px; height:380px; border-radius:50%; box-shadow:0 0 0 5px var(--deep), 0 0 40px rgba(200,32,109,0.4), 0 20px 60px rgba(0,0,0,0.9); }
-  .spin-btn { font-family:'Playfair Display',serif; font-size:1.1rem; font-weight:700; letter-spacing:0.1em; padding:0.85rem 3rem; background:linear-gradient(135deg,var(--hot),var(--deep)); color:#fff; border:none; border-radius:3px; cursor:pointer; text-transform:uppercase; transition:transform 0.1s, box-shadow 0.2s; box-shadow:0 4px 20px rgba(200,32,109,0.5); }
-  .spin-btn:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(240,63,110,0.6); }
-  .spin-btn:active { transform:translateY(0); }
-  .spin-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
-  .result-box { min-height:60px; text-align:center; padding:0.75rem 1.5rem; background:var(--surface2); border:1px solid var(--border); border-radius:4px; width:100%; max-width:380px; transition:all 0.3s; }
-  .result-label { font-size:0.7rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
-  .result-value { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--accent); font-weight:700; }
-  .sidebar { flex:1; min-width:280px; max-width:380px; display:flex; flex-direction:column; gap:1.25rem; }
-  .panel { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:1.25rem; }
-  .panel-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--hot); margin-bottom:1rem; letter-spacing:0.05em; display:flex; align-items:center; gap:8px; }
-  .panel-title::before { content:''; display:block; width:3px; height:16px; background:linear-gradient(to bottom,var(--hot),var(--deep)); border-radius:2px; }
-  .entries-list { display:flex; flex-direction:column; gap:6px; max-height:280px; overflow-y:auto; padding-right:4px; margin-bottom:0.75rem; }
-  .entries-list::-webkit-scrollbar { width:4px; }
-  .entries-list::-webkit-scrollbar-track { background:var(--surface2); }
-  .entries-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
-  .entry-row { display:flex; align-items:center; gap:6px; animation:slideIn 0.2s ease; }
-  .entry-row.exhausted .entry-input { opacity:0.35; text-decoration:line-through; }
-  .entry-row.exhausted .entry-num { opacity:0.35; }
-  @keyframes slideIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
-  .entry-num { font-size:0.7rem; color:var(--muted); min-width:18px; text-align:center; font-weight:500; }
-  .entry-input { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:0.45rem 0.65rem; color:var(--text); font-family:'DM Sans',sans-serif; font-size:0.85rem; transition:border-color 0.2s; outline:none; }
-  .entry-input:focus { border-color:var(--hot); }
-  .del-btn { background:none; border:1px solid var(--border); color:var(--muted); width:26px; height:26px; border-radius:4px; cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background 0.15s,color 0.15s; }
-  .del-btn:hover { background:rgba(240,63,110,0.15); color:var(--accent); border-color:var(--hot); }
-  .add-btn { width:100%; padding:0.55rem; background:transparent; border:1px dashed var(--border); border-radius:4px; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:0.82rem; cursor:pointer; transition:all 0.2s; }
-  .add-btn:hover { border-color:var(--hot); color:var(--hot); background:rgba(240,63,110,0.06); }
-  .history-list { display:flex; flex-direction:column; gap:5px; max-height:140px; overflow-y:auto; }
-  .history-item { font-size:0.8rem; color:var(--muted); padding:4px 8px; background:var(--surface2); border-radius:3px; display:flex; justify-content:space-between; }
-  .history-item span { color:var(--accent); }
-  .empty-history { font-size:0.8rem; color:var(--muted); text-align:center; padding:0.75rem 0; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopius Fortune Wheel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #2d0a1e, #3b0f2a, #1a0610);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(255,255,255,.3);
+      letter-spacing: 2px;
+    }
+
+    .wheel-container {
+      position: relative;
+      width: 340px;
+      height: 340px;
+      margin-bottom: 30px;
+    }
+
+    #wheelCanvas {
+      width: 340px;
+      height: 340px;
+      border-radius: 50%;
+      box-shadow: 0 0 30px rgba(0,0,0,.5), 0 0 60px rgba(203,33,109,.3);
+    }
+
+    .pointer {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-top: 36px solid #CB216D;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
+      z-index: 10;
+    }
+
+    #spinBtn {
+      padding: 14px 48px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      background: linear-gradient(135deg, #99007F, #CB216D);
+      color: #fff;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 15px rgba(153,0,127,.4);
+    }
+
+    #spinBtn:hover:not(:disabled) {
+      transform: scale(1.05);
+      box-shadow: 0 6px 25px rgba(153,0,127,.6);
+    }
+
+    #spinBtn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      background: #666;
+      box-shadow: none;
+    }
+
+    .result-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.75);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .result-overlay.active { display: flex; }
+
+    .result-box {
+      background: linear-gradient(135deg, #3b0f2a, #2d0a1e);
+      border: 2px solid #CB216D;
+      border-radius: 20px;
+      padding: 40px 50px;
+      text-align: center;
+      animation: popIn .35s ease;
+    }
+
+    .result-box h2 {
+      font-size: 1.6rem;
+      margin-bottom: 10px;
+      color: #D7296A;
+    }
+
+    .result-box p {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .result-box button {
+      padding: 10px 30px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 30px;
+      background: #CB216D;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .history {
+      position: fixed;
+      right: 20px;
+      top: 20px;
+      background: rgba(0,0,0,.4);
+      border-radius: 12px;
+      padding: 15px;
+      max-height: 60vh;
+      overflow-y: auto;
+      min-width: 180px;
+    }
+
+    .history h3 {
+      font-size: .9rem;
+      margin-bottom: 8px;
+      opacity: .7;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .history-item {
+      padding: 6px 10px;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      font-size: .85rem;
+      background: rgba(255,255,255,.08);
+    }
+
+    .history-item.exhausted {
+      opacity: .4;
+      text-decoration: line-through;
+    }
+
+    .all-done-msg {
+      font-size: 1.3rem;
+      color: #D7296A;
+      margin-top: 15px;
+      display: none;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 1.5rem; }
+      .wheel-container { width: 280px; height: 280px; }
+      #wheelCanvas { width: 280px; height: 280px; }
+      .history { position: static; margin-top: 20px; max-height: 30vh; }
+      .result-box { padding: 25px 30px; }
+      .result-box p { font-size: 1.5rem; }
+    }
+  </style>
 </head>
 <body>
-<h1>Spin the Wheel</h1>
-<p class="subtitle">Fortune favours the bold</p>
-<div class="main-layout">
-  <div class="wheel-section">
-    <div class="wheel-wrapper">
-      <div class="wheel-pointer"></div>
-      <canvas id="wheelCanvas" width="380" height="380"></canvas>
-    </div>
-    <button class="spin-btn" id="spinBtn" onclick="spinWheel()">Spin</button>
-    <div class="result-box" id="resultBox">
-      <div class="result-label">Result</div>
-      <div class="result-value" id="resultValue">—</div>
+
+  <h1>KOPIUS FORTUNE WHEEL</h1>
+
+  <div class="wheel-container">
+    <div class="pointer"></div>
+    <canvas id="wheelCanvas" width="680" height="680"></canvas>
+  </div>
+
+  <button id="spinBtn">GIRAR</button>
+  <p class="all-done-msg" id="allDoneMsg">¡Todos los premios han sido entregados!</p>
+
+  <div class="history" id="history">
+    <h3>Historial</h3>
+  </div>
+
+  <div class="result-overlay" id="resultOverlay">
+    <div class="result-box">
+      <h2>¡Felicidades!</h2>
+      <p id="resultText"></p>
+      <button id="closeResult">CERRAR</button>
     </div>
   </div>
-  <div class="sidebar">
-    <div class="panel">
-      <div class="panel-title">Wheel Entries <span style="font-size:0.75rem;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400;">(max 6)</span></div>
-      <div class="entries-list" id="entriesList"></div>
-      <button class="add-btn" id="addBtn" onclick="addEntry()">+ Add entry</button>
-    </div>
-    <div class="panel">
-      <div class="panel-title">Spin History</div>
-      <div id="historyList" class="history-list">
-        <div class="empty-history">No spins yet</div>
-      </div>
-    </div>
-  </div>
-</div>
-<script>
-const LOGO_SRC = "data:image/jpeg;base64,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";
 
-// Pixel-analysed gap centers (1° resolution scan at r=103px):
-// Gaps at: 7.5°, 69.5°, 124.5°, 187°, 247°, 304.5° (canvas coords: 0=right, CW)
-// initial_angle = -22.5° = -PI/8 so slice midpoints land exactly on gaps
-const INITIAL_ANGLE = -Math.PI / 8; // -22.5 degrees
-const MAX_ENTRIES = 6;
+  <script>
+    /* ── Prize definitions with stock caps ── */
+    const prizes = [
+      { name: "Set de Mate",  stock: 14, remaining: 14 },
+      { name: "Botella",      stock: 14, remaining: 14 },
+      { name: "Soporte",      stock: 14, remaining: 14 },
+      { name: "Cuaderno",     stock:  6, remaining:  6 },
+      { name: "Mousepad",     stock: 14, remaining: 14 },
+      { name: "Mochila",      stock:  7, remaining:  7 },
+    ];
 
-// Gap centers in RADIANS (canvas coordinate system)
-const GAP_CENTERS_DEG = [7.5, 69.5, 124.5, 187.0, 247.0, 304.5];
-const GAP_CENTERS_RAD = GAP_CENTERS_DEG.map(d => d * Math.PI / 180);
+    /* ── Wheel image & angle constants (match original design) ── */
+    const INITIAL_ANGLE = -Math.PI / 8;          // -22.5 deg offset so slices align with image
+    const GAP_CENTERS_DEG = [7.5, 69.5, 124.5, 187.0, 247.0, 304.5];
+    const GAP_CENTERS_RAD = GAP_CENTERS_DEG.map(d => d * Math.PI / 180);
 
-let entries = [
-  { name: 'Sets de mate',  stock: 14, remaining: 14 },
-  { name: 'Botellas',      stock: 14, remaining: 14 },
-  { name: 'Soportes',      stock: 14, remaining: 14 },
-  { name: 'Cuadernos',     stock:  6, remaining:  6 },
-  { name: 'Mousepads',     stock: 14, remaining: 14 },
-  { name: 'Mochilas',      stock:  7, remaining:  7 },
-];
-let currentAngle = INITIAL_ANGLE;
-let spinning = false;
-let spinCount = 0;
-let logoImage = null;
+    const NUM = prizes.length;
+    const ARC = (2 * Math.PI) / NUM;
 
-const canvas = document.getElementById('wheelCanvas');
-const ctx = canvas.getContext('2d');
+    /* ── Canvas setup ── */
+    const canvas = document.getElementById("wheelCanvas");
+    const ctx = canvas.getContext("2d");
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const radius = cx - 4;
 
-const img = new Image();
-img.onload = () => { logoImage = img; drawWheel(); };
-img.src = LOGO_SRC;
+    let currentAngle = INITIAL_ANGLE;
+    let spinning = false;
+    let wheelImg = null;
+    let imgLoaded = false;
 
-function escapeHTML(str) {
-  const el = document.createElement('span');
-  el.textContent = str;
-  return el.innerHTML;
-}
+    /* ── Load wheel background image ── */
+    const img = new Image();
+    img.onload = function() {
+      wheelImg = img;
+      imgLoaded = true;
+      drawWheel();
+    };
+    img.onerror = function() {
+      console.warn("Could not load Logo Kopius.png — using fallback colors");
+      drawWheel();
+    };
+    img.src = "Logo Kopius.png";
 
-function allExhausted() {
-  return entries.every(e => e.remaining <= 0);
-}
+    /* ── Draw wheel ── */
+    function drawWheel() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-function anyAvailable() {
-  return entries.some(e => e.remaining > 0);
-}
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(currentAngle);
 
-function renderEntries() {
-  const list = document.getElementById('entriesList');
-  list.innerHTML = '';
-  entries.forEach((entry, i) => {
-    const row = document.createElement('div');
-    row.className = 'entry-row' + (entry.remaining <= 0 ? ' exhausted' : '');
+      if (imgLoaded && wheelImg) {
+        // Draw the image centered, scaled to fill the wheel
+        const size = radius * 2;
+        ctx.drawImage(wheelImg, -radius, -radius, size, size);
+      } else {
+        // Fallback: colored segments
+        const colors = ["#99007F","#CB216D","#D72969","#F73F5D","#BE1972","#D52869"];
+        for (let i = 0; i < NUM; i++) {
+          const startA = i * ARC;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, radius, startA, startA + ARC);
+          ctx.closePath();
+          ctx.fillStyle = prizes[i].remaining > 0 ? colors[i] : "#444";
+          ctx.fill();
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
 
-    const num = document.createElement('span');
-    num.className = 'entry-num';
-    num.textContent = i + 1;
+      // Overlay text labels at the pre-calculated gap angles
+      for (let i = 0; i < NUM; i++) {
+        const angle = GAP_CENTERS_RAD[i];
+        const available = prizes[i].remaining > 0;
 
-    const input = document.createElement('input');
-    input.className = 'entry-input';
-    input.type = 'text';
-    input.value = entry.name;
-    input.placeholder = 'Entry ' + (i + 1);
-    input.addEventListener('input', function() { updateLabel(i, this.value); });
-    if (entry.remaining <= 0) input.disabled = true;
+        ctx.save();
+        ctx.rotate(angle);
+        ctx.textAlign = "right";
+        ctx.fillStyle = available ? "#fff" : "rgba(255,255,255,.35)";
+        ctx.font = `bold ${available ? 26 : 22}px 'Segoe UI', sans-serif`;
+        ctx.shadowColor = "rgba(0,0,0,.7)";
+        ctx.shadowBlur = 4;
+        ctx.fillText(prizes[i].name, radius - 18, 8);
+        ctx.restore();
+      }
 
-    const del = document.createElement('button');
-    del.className = 'del-btn';
-    del.title = 'Remove';
-    del.textContent = '\u2715';
-    del.addEventListener('click', function() { deleteEntry(i); });
+      ctx.restore(); // undo translate+rotate
+    }
 
-    row.appendChild(num);
-    row.appendChild(input);
-    row.appendChild(del);
-    list.appendChild(row);
-  });
-  document.getElementById('addBtn').style.display = entries.length >= MAX_ENTRIES ? 'none' : 'block';
-  updateSpinButton();
-  drawWheel();
-}
+    /* ── Determine which segment the pointer is on ── */
+    function getWinningIndex() {
+      // Pointer is at top (angle -π/2 in canvas coords).
+      // We need to figure out which gap the pointer falls into.
+      // Normalize the effective angle at the pointer position.
+      const raw = (-Math.PI / 2 - currentAngle) % (2 * Math.PI);
+      const pointerAngle = ((raw % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
 
-function updateLabel(i, v) { entries[i].name = v; drawWheel(); }
+      // Find which gap center is closest to the pointer angle
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < NUM; i++) {
+        let diff = Math.abs(pointerAngle - GAP_CENTERS_RAD[i]);
+        if (diff > Math.PI) diff = 2 * Math.PI - diff;
+        if (diff < bestDist) {
+          bestDist = diff;
+          bestIdx = i;
+        }
+      }
+      return bestIdx;
+    }
 
-function addEntry() {
-  if (entries.length >= MAX_ENTRIES) return;
-  entries.push({ name: 'Entry ' + (entries.length + 1), stock: 1, remaining: 1 });
-  renderEntries();
-}
+    /* ── Stock helpers ── */
+    function anyAvailable() {
+      return prizes.some(p => p.remaining > 0);
+    }
 
-function deleteEntry(i) {
-  if (entries.length <= 2) return alert('Need at least 2 entries!');
-  entries.splice(i, 1);
-  renderEntries();
-}
+    function allExhausted() {
+      return prizes.every(p => p.remaining <= 0);
+    }
 
-function updateSpinButton() {
-  const btn = document.getElementById('spinBtn');
-  if (allExhausted()) {
-    btn.disabled = true;
-    document.getElementById('resultValue').textContent = 'All prizes claimed!';
-    document.getElementById('resultBox').style.borderColor = 'var(--hot)';
-  }
-}
+    /* ── History ── */
+    function addHistory(name, exhausted) {
+      const div = document.createElement("div");
+      div.className = "history-item" + (exhausted ? " exhausted" : "");
+      div.textContent = name;
+      const container = document.getElementById("history");
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
 
-function drawWheel() {
-  const size = canvas.width;
-  const cx = size / 2, cy = size / 2, r = size / 2 - 4;
-  const n = entries.length;
+    /* ── Spin logic ── */
+    function spin() {
+      if (spinning || !anyAvailable()) return;
+      spinning = true;
+      document.getElementById("spinBtn").disabled = true;
 
-  ctx.clearRect(0, 0, size, size);
-  ctx.save();
-  ctx.translate(cx, cy);
+      const totalRotation = (Math.random() * 4 + 5) * 2 * Math.PI; // 5–9 full rotations
+      const startAngle = currentAngle;
+      const targetAngle = startAngle + totalRotation;
+      const duration = 4000 + Math.random() * 1000; // 4–5 seconds
+      const startTime = performance.now();
 
-  // Draw image — rotate by currentAngle
-  ctx.save();
-  ctx.rotate(currentAngle);
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, 2 * Math.PI);
-  ctx.clip();
-  if (logoImage) {
-    ctx.drawImage(logoImage, -r, -r, r * 2, r * 2);
-  } else {
-    ctx.fillStyle = '#08000a';
-    ctx.fill();
-  }
-  ctx.restore();
+      function animate(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
 
-  // Draw text — positioned at FIXED gap angles + currentAngle rotation
-  const n6 = Math.min(n, 6);
-  for (let i = 0; i < n6; i++) {
-    const gapAngle = GAP_CENTERS_RAD[i] + currentAngle;
-    const isExhausted = entries[i].remaining <= 0;
+        // Cubic ease-out
+        const eased = 1 - Math.pow(1 - progress, 3);
+        currentAngle = startAngle + totalRotation * eased;
 
-    ctx.save();
-    ctx.rotate(gapAngle);
-    ctx.textAlign = 'right';
+        drawWheel();
 
-    const fontSize = 13;
-    ctx.font = '700 ' + fontSize + 'px "DM Sans", sans-serif';
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          currentAngle = currentAngle % (2 * Math.PI);
+          handleResult();
+        }
+      }
 
-    const label = entries[i].name || '';
-    const maxLen = 13;
-    const txt = label.length > maxLen ? label.slice(0, maxLen) + '\u2026' : label;
+      requestAnimationFrame(animate);
+    }
 
-    ctx.globalAlpha = isExhausted ? 0.25 : 1;
+    /* ── Handle result after spin ── */
+    function handleResult() {
+      const idx = getWinningIndex();
+      const prize = prizes[idx];
 
-    // Heavy black stroke for legibility
-    ctx.strokeStyle = 'rgba(0,0,0,0.98)';
-    ctx.lineWidth = 5;
-    ctx.lineJoin = 'round';
-    ctx.shadowColor = 'rgba(0,0,0,1)';
-    ctx.shadowBlur = 10;
-    ctx.strokeText(txt, r - 14, 5);
+      if (prize.remaining <= 0) {
+        // Prize exhausted — auto re-spin
+        addHistory(prize.name + " (agotado)", true);
+        spinning = false;
+        // Brief pause then re-spin
+        setTimeout(() => {
+          if (anyAvailable()) {
+            spin();
+          } else {
+            showAllDone();
+          }
+        }, 600);
+        return;
+      }
 
-    // White fill (or grey if exhausted)
-    ctx.fillStyle = isExhausted ? '#888888' : '#ffffff';
-    ctx.shadowColor = 'rgba(0,0,0,0.4)';
-    ctx.shadowBlur = 2;
-    ctx.fillText(txt, r - 14, 5);
+      // Award prize
+      prize.remaining--;
+      addHistory(prize.name, false);
+      drawWheel(); // Redraw to grey out if now exhausted
 
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  }
+      // Show result
+      document.getElementById("resultText").textContent = prize.name;
+      document.getElementById("resultOverlay").classList.add("active");
 
-  ctx.restore();
-}
-
-function spinWheel() {
-  if (spinning || entries.length < 2 || allExhausted()) return;
-  spinning = true;
-  document.getElementById('spinBtn').disabled = true;
-  document.getElementById('resultValue').textContent = '\u2026';
-  document.getElementById('resultBox').style.borderColor = 'var(--border)';
-
-  const spinDeg = 1440 + Math.random() * 1440;
-  const spinRad = spinDeg * Math.PI / 180;
-  const duration = 3500 + Math.random() * 1500;
-  const start = performance.now();
-  const startAngle = currentAngle;
-
-  function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
-
-  function step(now) {
-    const t = Math.min((now - start) / duration, 1);
-    currentAngle = startAngle + spinRad * easeOut(t);
-    drawWheel();
-    if (t < 1) { requestAnimationFrame(step); } else {
       spinning = false;
-      document.getElementById('spinBtn').disabled = false;
-      handleResult();
+
+      if (allExhausted()) {
+        showAllDone();
+      }
     }
-  }
-  requestAnimationFrame(step);
-}
 
-function getWinnerIndex() {
-  const n = Math.min(entries.length, 6);
-  const pointerAngle = -Math.PI / 2;
-  let bestIdx = 0, bestDist = Infinity;
-  for (let i = 0; i < n; i++) {
-    const gapAngle = GAP_CENTERS_RAD[i] + currentAngle;
-    let dist = Math.abs(((gapAngle - pointerAngle + Math.PI) % (2 * Math.PI)) - Math.PI);
-    if (dist < bestDist) { bestDist = dist; bestIdx = i; }
-  }
-  return bestIdx;
-}
-
-function handleResult() {
-  const idx = getWinnerIndex();
-  const entry = entries[idx];
-
-  if (entry.remaining > 0) {
-    // Valid win — decrement stock, show result
-    entry.remaining--;
-    spinCount++;
-
-    document.getElementById('resultValue').textContent = entry.name;
-    document.getElementById('resultBox').style.borderColor = 'var(--hot)';
-
-    addHistory(entry.name);
-    renderEntries(); // re-render to update greyed-out state
-  } else {
-    // Prize exhausted — auto re-spin
-    if (anyAvailable()) {
-      document.getElementById('resultValue').textContent = 'Out of stock \u2014 re-spinning\u2026';
-      document.getElementById('resultBox').style.borderColor = 'var(--border)';
-      setTimeout(spinWheel, 800);
-    } else {
-      document.getElementById('resultValue').textContent = 'All prizes claimed!';
-      document.getElementById('resultBox').style.borderColor = 'var(--hot)';
-      document.getElementById('spinBtn').disabled = true;
-      renderEntries();
+    function showAllDone() {
+      document.getElementById("spinBtn").disabled = true;
+      document.getElementById("allDoneMsg").style.display = "block";
     }
-  }
-}
 
-function addHistory(winnerName) {
-  const hist = document.getElementById('historyList');
-  const empty = hist.querySelector('.empty-history');
-  if (empty) empty.remove();
+    /* ── Close result overlay ── */
+    document.getElementById("closeResult").addEventListener("click", () => {
+      document.getElementById("resultOverlay").classList.remove("active");
+      if (!allExhausted()) {
+        document.getElementById("spinBtn").disabled = false;
+      }
+    });
 
-  const item = document.createElement('div');
-  item.className = 'history-item';
-  item.style.borderLeft = '3px solid var(--hot)';
+    /* ── Spin button ── */
+    document.getElementById("spinBtn").addEventListener("click", spin);
 
-  const numSpan = document.createElement('span');
-  numSpan.textContent = '#' + spinCount;
-
-  const nameSpan = document.createElement('span');
-  nameSpan.textContent = winnerName;
-
-  item.appendChild(numSpan);
-  item.appendChild(nameSpan);
-  hist.insertBefore(item, hist.firstChild);
-  if (hist.children.length > 8) hist.lastChild.remove();
-}
-
-renderEntries();
-</script>
+    /* ── Initial draw ── */
+    drawWheel();
+  </script>
 </body>
 </html>
