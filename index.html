@@ -208,12 +208,12 @@
   <script>
     /* ── Prize definitions with stock caps ── */
     const prizes = [
-      { name: "Set de Mate",  stock: 14, remaining: 14 },
-      { name: "Botella",      stock: 14, remaining: 14 },
-      { name: "Soporte",      stock: 14, remaining: 14 },
-      { name: "Cuaderno",     stock:  6, remaining:  6 },
-      { name: "Mousepad",     stock: 14, remaining: 14 },
-      { name: "Mochila",      stock:  7, remaining:  7 },
+      { name: "Set de Mate",       stock: 14, remaining: 14 },
+      { name: "Botella",           stock: 14, remaining: 14 },
+      { name: "Soporte / Pad",    stock: 28, remaining: 28 },
+      { name: "Cuaderno",          stock:  6, remaining:  6 },
+      { name: "Try again",         stock: Infinity, remaining: Infinity, isTryAgain: true },
+      { name: "Mochila",           stock:  7, remaining:  7 },
     ];
 
     /* ── Wheel image & angle constants (match original design) ── */
@@ -321,11 +321,11 @@
 
     /* ── Stock helpers ── */
     function anyAvailable() {
-      return prizes.some(p => p.remaining > 0);
+      return prizes.some(p => p.remaining > 0 && !p.isTryAgain);
     }
 
     function allExhausted() {
-      return prizes.every(p => p.remaining <= 0);
+      return prizes.every(p => p.remaining <= 0 || p.isTryAgain);
     }
 
     /* ── History ── */
@@ -376,11 +376,20 @@
       const idx = getWinningIndex();
       const prize = prizes[idx];
 
+      // "Try again" slot — no prize, just let them spin again
+      if (prize.isTryAgain) {
+        addHistory("Try again", false);
+        spinning = false;
+        document.getElementById("resultText").textContent = "¡Intentá de nuevo!";
+        document.getElementById("resultOverlay").querySelector("h2").textContent = "Oops...";
+        document.getElementById("resultOverlay").classList.add("active");
+        return;
+      }
+
       if (prize.remaining <= 0) {
         // Prize exhausted — auto re-spin
         addHistory(prize.name + " (agotado)", true);
         spinning = false;
-        // Brief pause then re-spin
         setTimeout(() => {
           if (anyAvailable()) {
             spin();
@@ -397,6 +406,7 @@
       drawWheel(); // Redraw to grey out if now exhausted
 
       // Show result
+      document.getElementById("resultOverlay").querySelector("h2").textContent = "¡Felicidades!";
       document.getElementById("resultText").textContent = prize.name;
       document.getElementById("resultOverlay").classList.add("active");
 
